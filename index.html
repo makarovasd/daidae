@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>8*8格子洗牌｜洗牌保留高亮</title>
+    <style>
+        *{box-sizing:border-box}
+        body{background:#222;color:#fff;font-family:system-ui;text-align:center;padding:20px}
+        .wrap{margin:10px auto;max-width:720px}
+        #container{
+            display:grid;
+            grid-template-columns: repeat(8,80px);
+            gap:4px;
+            justify-content:center;
+            margin:20px 0;
+        }
+        .cell{
+            width:80px;height:80px;
+            border:2px solid #444;
+            background:#111;
+            cursor:pointer;
+            transition: border-color 0.2s;
+            background-size:contain;
+            background-repeat:no-repeat;
+            background-position:center;
+        }
+        .cell.active{
+            border-color:#ffdd00;
+            box-shadow: 0 0 6px #ffdd0077;
+        }
+        .btn-group button{
+            padding:8px 20px;font-size:16px;margin:0 4px;cursor:pointer
+        }
+        .tip{color:#aaa;margin-bottom:12px}
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <h3>8×8格子洗牌｜洗牌不会取消高亮</h3>
+    <div class="tip">页面自动加载source.png，无需手动上传</div>
+    <div class="btn-group">
+        <button id="shuffleBtn">🔀洗牌随机(保留高亮)</button>
+        <button id="resetBtn">↩重置原图顺序(清空高亮)</button>
+        <button id="clearSelectBtn">🧹清除全部选中高亮</button>
+        <button id="downloadBtn">💾导出当前画面图片</button>
+    </div>
+    <div id="container"></div>
+    <canvas id="tempCanvas" style="display:none"></canvas>
+    <canvas id="exportCanvas" style="display:none"></canvas>
+</div>
+<script>
+//读取同目录 source.png
+const IMG_SRC="./source.png";
+const ROWS=8;
+const COLS=8;
+let tiles=[];
+let originalTiles=[];
+const container=document.getElementById("container");
+const tempCanvas=document.getElementById("tempCanvas");
+const tempCtx=tempCanvas.getContext("2d");
+
+function shuffle(arr){
+    const a=[...arr];
+    for(let i=a.length-1;i>0;i--){
+        const j=Math.floor(Math.random()*(i+1));
+        [a[i],a[j]]=[a[j],a[i]];
+    }
+    return a;
+}
+//只更新背景图片，DOM保留，保留高亮状态
+function updateBackgrounds(list){
+    const cells = Array.from(document.querySelectorAll(".cell"));
+    list.forEach((url, idx)=>{
+        cells[idx].style.backgroundImage = `url(${url})`;
+    })
+}
+//初始化格子DOM只执行一次
+function initDom(){
+    container.innerHTML="";
+    for(let i=0;i<ROWS*COLS;i++){
+        const div=document.createElement("div");
+        div.className="cell";
+        div.onclick = function(){
+            this.classList.toggle("active");
+        }
+        container.appendChild(div);
+    }
+}
+function clearAllSelect(){
+    document.querySelectorAll(".cell.active").forEach(el=>{
+        el.classList.remove("active");
+    })
+}
+async function startLoad(){
+    try{
+        const img=new Image();
+        img.src=IMG_SRC;
+        await new Promise((resolve,reject)=>{
+            img.onload=resolve;
+            img.onerror=()=>reject("图片source.png加载失败，请确认文件放在仓库根目录");
+        });
+        const tileW=img.width/COLS;
+        const tileH=img.height/ROWS;
+        tempCanvas.width=tileW;
+        tempCanvas.height=tileH;
+        tiles=[];
+        for(let r=0;r<ROWS;r++){
+            for(let c=0;c<COLS;c++){
+            tempCtx.clearRect(0,0,tileW,tileH);
+            tempCtx.drawImage(img,c*tileW,r*tileH,tileW,tileH,0,0,tileW,tileH);
+            const base64=tempCanvas.toDataURL("image/png");
+            tiles.push(base64);
+            }
+        }
+        originalTiles=[...tiles];
+        initDom();
+        updateBackgrounds(tiles);
+    }catch(err){
+        alert(err);
+    }
+}
+document.getElementById("shuffleBtn").onclick=()=>{
+    if(!tiles.length) return;
+    tiles = shuffle(tiles);
+    updateBackgrounds(tiles);
+}
+document.getElementById("resetBtn").onclick=()=>{
+    if(!originalTiles.length) return;
+    clearAllSelect();
+    tiles=[...originalTiles];
+    updateBackgrounds(tiles);
+}
+document.getElementById("clearSelectBtn").onclick = ()=>{
+    clearAllSelect();
+}
+document.getElementById("downloadBtn").onclick=function(){
+    if(!tiles.length) return;
+    const exportCanvas=document.getElementById("exportCanvas");
+    const expCtx=exportCanvas.getContext("2d");
+    const cellSize=80;
+    const gap=4;
+    exportCanvas.width=COLS*(cellSize+gap)-gap;
+    exportCanvas.height=ROWS*(cellSize+gap)-gap;
+    expCtx.fillStyle="#111";
+    expCtx.fillRect(0,0,exportCanvas.width,exportCanvas.height);
+    const cellDomList=Array.from(document.querySelectorAll(".cell"));
+    let loadPromises=[];
+    cellDomList.forEach((dom,idx)=>{
+        const bgUrl=dom.style.backgroundImage.match(/url\("?([^"]+)"?\)/)[1];
+        const img=new Image();
+        img.src=bgUrl;
+        const p=new Promise(resolve=>{img.onload=resolve});
+        loadPromises.push({img,p,idx});
+    })
+    Promise.all(loadPromises.map(x=>x.p)).then(()=>{
+        loadPromises.forEach(item=>{
+            const col=item.idx%COLS;
+            const row=Math.floor(item.idx/COLS);
+            expCtx.drawImage(item.img,col*(cellSize+gap),row*(cellSize+gap),cellSize,cellSize);
+        })
+        const link=document.createElement("a");
+        link.href=exportCanvas.toDataURL("image/png");
+        link.download="shuffle_result.png";
+        link.click();
+    })
+}
+startLoad();
+</script>
+</body>
+</html>
