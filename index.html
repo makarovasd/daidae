@@ -23,17 +23,20 @@ const GOEASY_APPKEY = "BC-c21dce55a19c4231b5dd036ee81b3211";
 const goeasy = new GoEasy({
   appkey: GOEASY_APPKEY,
   onConnected: ()=>{
-    document.getElementById("tip").textContent="已连接，可以同步";
+    document.getElementById("tip").textContent="✅ 已连接，可以同步";
   },
   onDisconnected: ()=>{
-    document.getElementById("tip").textContent="断开，正在重连";
+    document.getElementById("tip").textContent="❌ 断开，正在重连";
+  },
+  onError: (e)=>{
+    document.getElementById("tip").textContent="❌ 连接失败："+e.content;
   }
 });
 const channel = "room001";
 
 const gridSize = 8;
 let img = new Image();
-img.src = "source.png"; // 这里改成你仓库里的图片名字
+img.src = "source.png";
 let cellW, cellH;
 let state = {
   order: [],
