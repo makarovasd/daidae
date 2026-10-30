@@ -8,8 +8,8 @@
 body{padding:20px;font-family:system-ui}
 #grid{display:grid;gap:2px;margin:20px 0}
 .cell{border:2px solid transparent;cursor:pointer}
-.cell.active{border-color:#ff3333;box-shadow:0 0 4px red}
-button{padding:8px 16px;font-size:16px;margin-right:8px}
+.cell.active{border-color:#ff3333;box-shadow:0 0 6px #ff3333}
+button{padding:8px 14px;font-size:16px;margin-right:8px}
 </style>
 </head>
 <body>
@@ -20,84 +20,83 @@ button{padding:8px 16px;font-size:16px;margin-right:8px}
 <script src="https://cdn.goeasy.io/goeasy-2.5.0.min.js"></script>
 <script>
 const GOEASY_APPKEY = "BC-c21dce55a19c4231b5dd036ee81b3211";
+// ✅ 强制指定杭州节点
 const goeasy = new GoEasy({
-  appkey: GOEASY_APPKEY,
-  onConnected: ()=>{
-    document.getElementById("tip").textContent="✅ 已连接，可以同步";
-  },
-  onDisconnected: ()=>{
-    document.getElementById("tip").textContent="❌ 断开，正在重连";
-  },
-  onError: (e)=>{
-    document.getElementById("tip").textContent="❌ 连接失败："+e.content;
-  }
+    appkey: GOEASY_APPKEY,
+    host: "hangzhou.goeasy.io",
+    onConnected: ()=>{
+        document.getElementById("tip").textContent="✅ 已连接，可以同步";
+    },
+    onDisconnected: ()=>{
+        document.getElementById("tip").textContent="❌ 断开，正在重连";
+    },
+    onError: (e)=>{
+        document.getElementById("tip").textContent="❌ 错误："+e.content;
+    }
 });
 const channel = "room001";
-
 const gridSize = 8;
+
 let img = new Image();
 img.src = "source.png";
 let cellW, cellH;
-let state = {
-  order: [],
-  active: []
-};
+let state = {order:[], active:[]};
 
 function render(){
-  const gridEl = document.getElementById("grid");
-  gridEl.innerHTML = "";
-  gridEl.style.gridTemplateColumns = `repeat(${gridSize}, ${cellW}px)`;
-  state.order.forEach((idx, i)=>{
-    const div = document.createElement("div");
-    div.className = "cell" + (state.active.includes(i)?" active":"");
-    div.style.width = cellW+"px";
-    div.style.height = cellH+"px";
-    div.style.backgroundImage = `url(source.png)`;
-    const rx = (idx % gridSize) * cellW;
-    const ry = Math.floor(idx / gridSize) * cellH;
-    div.style.backgroundPosition = `-${rx}px -${ry}px`;
-    div.onclick = ()=>{
-      const newActive = [...state.active];
-      const p = newActive.indexOf(i);
-      if(p>=0) newActive.splice(p,1);
-      else newActive.push(i);
-      const newData = {order:state.order, active:newActive};
-      goeasy.publish({
+    const gridEl = document.getElementById("grid");
+    gridEl.innerHTML = "";
+    gridEl.style.gridTemplateColumns = `repeat(${gridSize}, ${cellW}px)`;
+    state.order.forEach((idx, i)=>{
+        const div = document.createElement("div");
+        div.className = "cell" + (state.active.includes(i)?" active":"");
+        div.style.width = cellW+"px";
+        div.style.height = cellH+"px";
+        div.style.backgroundImage = `url(source.png)`;
+        const x = (idx % gridSize) * cellW;
+        const y = Math.floor(idx / gridSize) * cellH;
+        div.style.backgroundPosition = `-${x}px -${y}px`;
+        div.onclick = ()=>{
+            if(state.active.includes(i)){
+                state.active = state.active.filter(n=>n!==i);
+            }else{
+                state.active.push(i);
+            }
+            publishState();
+        };
+        gridEl.appendChild(div);
+    })
+}
+
+function publishState(){
+    goeasy.publish({
         channel: channel,
-        message: JSON.stringify(newData)
-      })
-    }
-    gridEl.appendChild(div);
-  })
+        message: JSON.stringify(state)
+    })
 }
 
 goeasy.subscribe({
-  channel: channel,
-  onMessage: function(message){
-    state = JSON.parse(message.content);
-    render();
-  }
+    channel: channel,
+    onMessage: function(res){
+        state = JSON.parse(res.content);
+        render();
+    }
 });
 
 img.onload = ()=>{
-  cellW = img.width / gridSize;
-  cellH = img.height / gridSize;
-  state.order = Array.from({length:gridSize*gridSize},(_,i)=>i);
-  state.active = [];
-  render();
+    cellW = img.width / gridSize;
+    cellH = img.height / gridSize;
+    state.order = Array.from({length:gridSize*gridSize}, (_,i)=>i);
+    state.active = [];
+    render();
 }
 
 document.getElementById("shuffleBtn").onclick = ()=>{
-  const order = [...state.order];
-  for(let i=order.length-1;i>0;i--){
-    const j = Math.floor(Math.random()*(i+1));
-    [order[i],order[j]] = [order[j],order[i]];
-  }
-  const newData = {order, active:state.active};
-  goeasy.publish({
-    channel: channel,
-    message: JSON.stringify(newData)
-  })
+    //洗牌
+    for(let i = state.order.length -1; i>0; i--){
+        const j = Math.floor(Math.random()*(i+1));
+        [state.order[i], state.order[j]] = [state.order[j], state.order[i]];
+    }
+    publishState();
 }
 </script>
 </body>
