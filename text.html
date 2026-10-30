@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<title>多人同步图片洗牌-GoEasy国内版</title>
+<title>本地测试 - 多人同步洗牌</title>
 <style>
 *{box-sizing:border-box}
 body{padding:20px;font-family:system-ui}
@@ -20,7 +20,6 @@ button{padding:8px 14px;font-size:16px;margin-right:8px}
 <script src="https://cdn.goeasy.io/goeasy-2.5.0.min.js"></script>
 <script>
 const GOEASY_APPKEY = "BC-c21dce55a19c4231b5dd036ee81b3211";
-// ✅ 强制指定杭州节点
 const goeasy = new GoEasy({
     appkey: GOEASY_APPKEY,
     host: "hangzhou.goeasy.io",
@@ -91,7 +90,6 @@ img.onload = ()=>{
 }
 
 document.getElementById("shuffleBtn").onclick = ()=>{
-    //洗牌
     for(let i = state.order.length -1; i>0; i--){
         const j = Math.floor(Math.random()*(i+1));
         [state.order[i], state.order[j]] = [state.order[j], state.order[i]];
