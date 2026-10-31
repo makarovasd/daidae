@@ -21,14 +21,13 @@ button{padding:8px 14px;font-size:16px;margin-right:8px;margin-bottom:10px}
 <script>
 const GRID_SIZE = 8;
 const TOTAL = GRID_SIZE * GRID_SIZE;
-// 果创云配置，已经填好你的信息
 const APP_KEY = "F8B46187FB06750ADEA99EDFA422F552";
 const TABLE_NAME = "bingo_table";
 const ROW_ID = 1;
 const FIELD_NAME = "json_data";
 
 let img = new Image();
-img.src = "pic.png"; // 你的png图片，放到仓库和index.html一起
+img.src = "pic.png";
 let cellW, cellH;
 let state = {
   order: [],
@@ -38,7 +37,6 @@ let isUploading = false;
 const gridEl = document.getElementById("grid");
 const statusEl = document.getElementById("status");
 
-// 渲染格子
 function render(){
   gridEl.innerHTML = "";
   for(let i=0;i<TOTAL;i++){
@@ -64,7 +62,6 @@ function render(){
   }
 }
 
-// 保存到果创云
 async function saveToCloud(){
   if(isUploading) return;
   isUploading = true;
@@ -76,6 +73,7 @@ async function saveToCloud(){
   fd.append("id", ROW_ID);
   fd.append("data", JSON.stringify({[FIELD_NAME]:JSON.stringify(state)}));
   try{
+    // ✅ 这里改成 https！！
     const res = await fetch("https://api.yesapi.cn/", {
       method:"POST",
       headers:{"Content-Type":"application/x-www-form-urlencoded"},
@@ -89,11 +87,11 @@ async function saveToCloud(){
     }
   }catch(e){
     statusEl.textContent = "❌ 网络错误";
+    console.error(e);
   }
   isUploading = false;
 }
 
-// 从果创云拉取最新数据
 async function loadFromCloud(){
   statusEl.textContent = "拉取云端数据...";
   const fd = new URLSearchParams();
@@ -110,7 +108,6 @@ async function loadFromCloud(){
     const ret = await res.json();
     if(ret.ret === 200 && ret.data.info){
       state = JSON.parse(ret.data.info[FIELD_NAME]);
-      // 如果是空，初始化
       if(!state.order || state.order.length!==TOTAL){
         state.order = Array.from({length:TOTAL}, (_,i)=>i);
         state.active = [];
@@ -118,16 +115,15 @@ async function loadFromCloud(){
       render();
       statusEl.textContent = "✅ 已同步";
     }else{
-      statusEl.textContent = "❌ 获取失败";
+      statusEl.textContent = "❌ 获取失败:" + ret.msg;
     }
   }catch(e){
     statusEl.textContent = "❌ 获取失败";
+    console.error(e);
   }
 }
 
-// 随机打乱，保留高亮
 document.getElementById("shuffleBtn").onclick = ()=>{
-  // 洗牌
   let arr = [...state.order];
   for(let i=arr.length-1;i>0;i--){
     let j = Math.floor(Math.random()*(i+1));
@@ -142,11 +138,10 @@ img.onload = ()=>{
   cellW = img.width / GRID_SIZE;
   cellH = img.height / GRID_SIZE;
   loadFromCloud();
-  // 定时自动拉取别人的修改（2秒刷新一次）
   setInterval(loadFromCloud, 2000);
 }
 img.onerror = ()=>{
-  statusEl.textContent = "❌ 找不到 pic.png，确认图片文件名";
+  statusEl.textContent = "❌ 找不到 pic.png";
 }
 </script>
 </body>
