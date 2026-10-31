@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<title>多人同步拼图｜果创云版</title>
+<title>多人同步拼图</title>
 <style>
 *{box-sizing:border-box}
 body{padding:20px;font-family:system-ui}
@@ -21,10 +21,10 @@ button{padding:8px 14px;font-size:16px;margin-right:8px;margin-bottom:10px}
 <script>
 const GRID_SIZE = 8;
 const TOTAL = GRID_SIZE * GRID_SIZE;
-const APP_KEY = "F8B46187FB06750ADEA99EDFA422F552";
-const TABLE_NAME = "bingo_table";
-const ROW_ID = 1;
-const FIELD_NAME = "json_data";
+// =========这里换成你自己的jsonbin信息========
+const BIN_ID = "在这里填bin id";
+const ACCESS_KEY = "在这里填X-Access-Key";
+// ==========================================
 
 let img = new Image();
 img.src = "pic.png";
@@ -66,24 +66,19 @@ async function saveToCloud(){
   if(isUploading) return;
   isUploading = true;
   statusEl.textContent = "正在同步...";
-  const fd = new URLSearchParams();
-  fd.append("app_key", APP_KEY);
-  fd.append("s", "App.Table.Update");
-  fd.append("model_name", TABLE_NAME);
-  fd.append("id", ROW_ID);
-  fd.append("data", JSON.stringify({[FIELD_NAME]:JSON.stringify(state)}));
   try{
-    // ✅ 这里改成 https！！
-    const res = await fetch("https://api.yesapi.cn/", {
-      method:"POST",
-      headers:{"Content-Type":"application/x-www-form-urlencoded"},
-      body:fd
+    const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
+      method:"PUT",
+      headers:{
+        "X-Access-Key": ACCESS_KEY,
+        "Content-Type":"application/json"
+      },
+      body: JSON.stringify(state)
     });
-    const ret = await res.json();
-    if(ret.ret === 200){
+    if(res.ok){
       statusEl.textContent = "✅ 同步成功";
     }else{
-      statusEl.textContent = "❌ 同步失败:" + ret.msg;
+      statusEl.textContent = "❌ 同步失败";
     }
   }catch(e){
     statusEl.textContent = "❌ 网络错误";
@@ -94,20 +89,16 @@ async function saveToCloud(){
 
 async function loadFromCloud(){
   statusEl.textContent = "拉取云端数据...";
-  const fd = new URLSearchParams();
-  fd.append("app_key", APP_KEY);
-  fd.append("s", "App.Table.Get");
-  fd.append("model_name", TABLE_NAME);
-  fd.append("id", ROW_ID);
   try{
-    const res = await fetch("https://api.yesapi.cn/", {
-      method:"POST",
-      headers:{"Content-Type":"application/x-www-form-urlencoded"},
-      body:fd
+    const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
+      method:"GET",
+      headers:{
+        "X-Access-Key": ACCESS_KEY
+      }
     });
     const ret = await res.json();
-    if(ret.ret === 200 && ret.data.info){
-      state = JSON.parse(ret.data.info[FIELD_NAME]);
+    if(ret.record){
+      state = ret.record;
       if(!state.order || state.order.length!==TOTAL){
         state.order = Array.from({length:TOTAL}, (_,i)=>i);
         state.active = [];
@@ -115,7 +106,7 @@ async function loadFromCloud(){
       render();
       statusEl.textContent = "✅ 已同步";
     }else{
-      statusEl.textContent = "❌ 获取失败:" + ret.msg;
+      statusEl.textContent = "❌ 获取失败";
     }
   }catch(e){
     statusEl.textContent = "❌ 获取失败";
