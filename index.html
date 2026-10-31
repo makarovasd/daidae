@@ -16,17 +16,26 @@ body{
 }
 #grid{
   display:grid;
-  grid-template-columns: repeat(8, 1fr);
-  gap:2px;
+  grid-template-columns: repeat(8, auto);
+  gap:6px;               /* 格子之间留缝，让每个边框各自独立，不会并成一条线 */
   margin-bottom:20px;
 }
 .cell{
-  border:2px solid transparent;
   cursor:pointer;
+  position:relative;
+  overflow:hidden;
+  background-repeat:no-repeat;
+  background-color:#121212;
+  border:1px solid rgba(255,255,255,.28);  /* 每格自己的边框：改这里即可调粗细和颜色 */
+  border-radius:2px;
 }
-.cell.active{
-  border-color:#ff3333;
-  box-shadow:0 0 4px #ff3333;
+.cell.active::after{
+  content:"";
+  position:absolute;
+  inset:4px;
+  border:2px solid #ff3333;
+  box-shadow:0 0 6px rgba(255,40,40,0.7);
+  pointer-events:none;
 }
 #shuffleBtn{
   width:140px;
@@ -66,43 +75,60 @@ body{
 <body>
 <div id="grid"></div>
 <button id="shuffleBtn">随机</button>
-
 <script>
-const GRID = 8;
-const total = GRID * GRID;
+/* pic.png 本身是 8 列 × 8 行，每格四周有一圈浅灰白描边。
+   以前按 9 列切，每一格里都会带进一段白线；
+   现在按图片真实的 8 列来切，并把裁剪框往里收，把白边整条裁掉。 */
+const COLS = 8;
+const ROWS = 8;
+const total = COLS * ROWS;
 const gridEl = document.getElementById("grid");
+
+// 原图每格左边/上边那条白边所占的宽度，裁剪时跳过它
+const INSET = 12;
+// 右边/下边再往里收一点，避免把白边的抗锯齿边缘带进来
+const TRIM = 2.5;
 
 let img = new Image();
 img.src = "pic.png";
 
-let cellW = 0;
-let cellH = 0;
+let pitchX = 0, pitchY = 0;      // 原图一格的宽、高
+let cropW = 0, cropH = 0;        // 每格真正裁出来的尺寸
+let cellW = 0, cellH = 0;        // 屏幕上一格的显示尺寸
+let scaleX = 1, scaleY = 1;      // 背景图放大倍数
+
 let order = [];
-let active = [];
+let activeItemSet = new Set();
 
 function draw(){
   gridEl.innerHTML = "";
-  gridEl.style.width = (cellW * GRID + 2 * (GRID - 1)) + "px";
+  gridEl.style.gridTemplateColumns = `repeat(${COLS}, ${cellW}px)`;
+  gridEl.style.gridTemplateRows = `repeat(${ROWS}, ${cellH}px)`;
 
-  for(let i = 0; i < total; i++){
+  for(let screenIdx = 0; screenIdx < total; screenIdx++){
+    const itemId = order[screenIdx];
     const div = document.createElement("div");
-    div.className = "cell";
-    if(active.includes(i)) div.classList.add("active");
+    div.className = activeItemSet.has(itemId) ? "cell active" : "cell";
     div.style.width = cellW + "px";
     div.style.height = cellH + "px";
 
-    const idx = order[i];
-    const x = (idx % GRID) * cellW;
-    const y = Math.floor(idx / GRID) * cellH;
+    const col = itemId % COLS;
+    const row = (itemId - col) / COLS;
 
-    div.style.backgroundImage = `url(pic.png)`;
-    div.style.backgroundPosition = `-${x}px -${y}px`;
-    div.style.backgroundSize = `${img.width}px ${img.height}px`;
+    // 跳过描边后的裁剪起点 + 背景图放大后的偏移
+    const sx = col * pitchX + INSET;
+    const sy = row * pitchY + INSET;
+
+    div.style.backgroundImage = "url('pic.png')";
+    div.style.backgroundSize = `${img.width * scaleX}px ${img.height * scaleY}px`;
+    div.style.backgroundPosition = `${-sx * scaleX}px ${-sy * scaleY}px`;
 
     div.onclick = ()=>{
-      const pos = active.indexOf(i);
-      if(pos >= 0) active.splice(pos, 1);
-      else active.push(i);
+      if(activeItemSet.has(itemId)){
+        activeItemSet.delete(itemId);
+      }else{
+        activeItemSet.add(itemId);
+      }
       draw();
     };
 
@@ -121,16 +147,24 @@ document.getElementById("shuffleBtn").onclick = ()=>{
 };
 
 img.onload = function(){
-  cellW = img.width / GRID;
-  cellH = img.height / GRID;
-  order = [];
-  for(let i = 0; i < total; i++) order.push(i);
-  active = [];
+  pitchX = img.width / COLS;
+  pitchY = img.height / ROWS;
+  cropW = pitchX - INSET - TRIM;
+  cropH = pitchY - INSET - TRIM;
+
+  // 屏幕上每格保持原来的大小，把裁出的区域放大铺满
+  cellW = Math.round(pitchX);
+  cellH = Math.round(pitchY);
+  scaleX = cellW / cropW;
+  scaleY = cellH / cropH;
+
+  order = Array.from({length: total}, (_, i) => i);
+  activeItemSet.clear();
   draw();
 };
 
 img.onerror = function(){
-  alert("❌ pic.png 加载失败！\n请确认图片已上传到仓库根目录，且文件名为 pic.png");
+  alert("❌ pic.png 加载失败！确认图片上传、文件名小写 pic.png");
 };
 </script>
 </body>
