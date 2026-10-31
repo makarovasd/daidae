@@ -2,87 +2,114 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<title>图片格子随机（静态版）</title>
+<title>拼图</title>
 <style>
-*{box-sizing:border-box}
+*{box-sizing:border-box;margin:0;padding:0}
 body{
+  background:#000;
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
   padding:20px;
-  font-family:system-ui;
-  background:#000000; /*黑色背景*/
-  color:#ffffff;     /*文字白色*/
 }
-#grid{display:grid;grid-template-columns: repeat(8, 1fr);gap:2px;width:600px}
-.cell{border:2px solid transparent;cursor:pointer;background-size:600px 600px}
-.cell.active{border-color:#ff3333;box-shadow:0 0 4px #ff3333}
-button{padding:8px 14px;font-size:16px;margin-right:8px;margin-bottom:10px}
-#status{color:#ffffff}
+#shuffleBtn{
+  width:72px;
+  height:72px;
+  border-radius:50%;
+  border:none;
+  font-size:18px;
+  cursor:pointer;
+  margin-bottom:16px;
+}
+#grid{
+  display:grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap:2px;
+}
+.cell{
+  border:2px solid transparent;
+  cursor:pointer;
+}
+.cell.active{
+  border-color:#ff3333;
+  box-shadow:0 0 4px #ff3333;
+}
 </style>
 </head>
 <body>
 <button id="shuffleBtn">随机</button>
-<span id="status">加载图片中...</span>
 <div id="grid"></div>
 
 <script>
-const GRID_SIZE = 8;
-const TOTAL = GRID_SIZE * GRID_SIZE;
+const GRID = 8;
+const total = GRID * GRID;
+const gridEl = document.getElementById("grid");
 
 let img = new Image();
 img.src = "pic.png";
-let cellW, cellH;
-let state = {
-  order: [],
-  active: []
-};
-const gridEl = document.getElementById("grid");
-const statusEl = document.getElementById("status");
 
-function render(){
+let cellW = 0;
+let cellH = 0;
+let order = [];
+let active = [];
+
+function draw(){
   gridEl.innerHTML = "";
-  for(let i=0;i<TOTAL;i++){
+  gridEl.style.width = (cellW * GRID + 2*(GRID-1)) + "px";
+
+  for(let i=0;i<total;i++){
     const div = document.createElement("div");
     div.className = "cell";
-    if(state.active.includes(i)) div.classList.add("active");
+    if(active.includes(i)) div.classList.add("active");
     div.style.width = cellW + "px";
     div.style.height = cellH + "px";
-    const idx = state.order[i];
-    const sx = (idx % GRID_SIZE) * cellW;
-    const sy = Math.floor(idx / GRID_SIZE) * cellH;
+
+    const idx = order[i];
+    const x = (idx % GRID) * cellW;
+    const y = Math.floor(idx / GRID) * cellH;
+
     div.style.backgroundImage = `url(pic.png)`;
-    div.style.backgroundPosition = `-${sx}px -${sy}px`;
-    div.style.backgroundSize = `${GRID_SIZE*cellW}px ${GRID_SIZE*cellH}px`;
+    div.style.backgroundPosition = `-${x}px -${y}px`;
+    div.style.backgroundSize = `${img.width}px ${img.height}px`;
+
     div.onclick = ()=>{
-      let p = state.active.indexOf(i);
-      if(p >= 0) state.active.splice(p,1);
-      else state.active.push(i);
-      render();
+      let pos = active.indexOf(i);
+      if(pos >= 0) active.splice(pos,1);
+      else active.push(i);
+      draw();
     }
     gridEl.appendChild(div);
   }
 }
 
+// 洗牌
 document.getElementById("shuffleBtn").onclick = ()=>{
-  let arr = [...state.order];
+  let arr = [...order];
   for(let i=arr.length-1;i>0;i--){
-    let j = Math.floor(Math.random()*(i+1));
-    [arr[i],arr[j]] = [arr[j],arr[i]];
+    let r = Math.floor(Math.random()*(i+1));
+    [arr[i],arr[r]] = [arr[r],arr[i]];
   }
-  state.order = arr;
-  render();
-  statusEl.textContent = "已打乱";
+  order = arr;
+  draw();
 }
 
-img.onload = ()=>{
-  cellW = img.width / GRID_SIZE;
-  cellH = img.height / GRID_SIZE;
-  state.order = Array.from({length:TOTAL}, (_,i)=>i);
-  state.active = [];
-  render();
-  statusEl.textContent = "就绪";
+img.onload = function(){
+  console.log("图片加载成功，宽：", img.width, "高：", img.height);
+  cellW = img.width / GRID;
+  cellH = img.height / GRID;
+  // 初始化顺序
+  order = [];
+  for(let i=0;i<total;i++) order.push(i);
+  active = [];
+  draw();
 }
-img.onerror = ()=>{
-  statusEl.textContent = "❌ 找不到 pic.png";
+
+img.onerror = function(){
+  alert("❌ pic.png 加载失败！\n检查：\n1. 图片已经上传到仓库根目录\n2. 文件名字严格是 pic.png，大小写不能错\n3. 和 index.html 放在同一文件夹");
 }
 </script>
 </body>
 </html>
+
