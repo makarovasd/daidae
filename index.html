@@ -5,16 +5,21 @@
 <title>图片格子随机（静态版）</title>
 <style>
 *{box-sizing:border-box}
-body{padding:20px;font-family:system-ui}
+body{
+  padding:20px;
+  font-family:system-ui;
+  background:#000000; /*黑色背景*/
+  color:#ffffff;     /*文字白色*/
+}
 #grid{display:grid;grid-template-columns: repeat(8, 1fr);gap:2px;width:600px}
 .cell{border:2px solid transparent;cursor:pointer;background-size:600px 600px}
 .cell.active{border-color:#ff3333;box-shadow:0 0 4px #ff3333}
 button{padding:8px 14px;font-size:16px;margin-right:8px;margin-bottom:10px}
-#status{color:#444}
+#status{color:#ffffff}
 </style>
 </head>
 <body>
-<button id="shuffleBtn">随机打乱（保留高亮）</button>
+<button id="shuffleBtn">随机</button>
 <span id="status">加载图片中...</span>
 <div id="grid"></div>
 
